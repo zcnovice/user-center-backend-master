@@ -10,6 +10,8 @@ import java.io.Serializable;
  * @author <a href="https://github.com/zcnovice"> zcnovice</a>
 
  */
+
+/* 通用响应体 */
 @Data
 public class BaseResponse<T> implements Serializable {
 
@@ -33,7 +35,6 @@ public class BaseResponse<T> implements Serializable {
      */
     private String description;
 
-    // https://t.zsxq.com/0emozsIJh
     public BaseResponse(int code, T data, String message, String description) {
         this.code = code;
         this.data = data;

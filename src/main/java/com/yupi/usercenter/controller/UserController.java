@@ -1,6 +1,7 @@
 package com.yupi.usercenter.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.fasterxml.jackson.databind.ser.Serializers;
 import com.yupi.usercenter.common.BaseResponse;
 import com.yupi.usercenter.common.ErrorCode;
@@ -36,12 +37,12 @@ public class UserController {
 
     /**
      * 用户注册
-     *
      * @param userRegisterRequest
      * @return
      */
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
+        /* 创建了一个专门的类来存注册信息（UserRegisterRequest） */
         // 校验
         if (userRegisterRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -50,6 +51,7 @@ public class UserController {
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
         String planetCode = userRegisterRequest.getPlanetCode();
+        /* 判断是否为空 */
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword, planetCode)) {
             return null;
         }
@@ -101,6 +103,7 @@ public class UserController {
      */
     @GetMapping("/current")
     public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
+        /* 获取对应session的用户 */
         Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User currentUser = (User) userObj;
         if (currentUser == null) {
@@ -108,34 +111,50 @@ public class UserController {
         }
         long userId = currentUser.getId();
         // TODO 校验用户是否合法
+
+        /* getById是mybatis-Plus里面的方法 */
         User user = userService.getById(userId);
+        /* 把查询出来的数据进行脱敏 */
         User safetyUser = userService.getSafetyUser(user);
         return ResultUtils.success(safetyUser);
     }
 
 
+    /**
+     * @Description: 用户搜索功能
+     * @return:
+     * @Author:  zcnovice
+     * @date:  2025/6/26 下午9:04
+     */
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUsers(String username, HttpServletRequest request) {
+        /*判断是不是管理员 */
         if (!isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH, "缺少管理员权限");
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        /* 检查字符串是否不为空，也不为NULL */
         if (StringUtils.isNotBlank(username)) {
+            /* 模糊查询 */
             queryWrapper.like("username", username);
         }
+        /* Mybatis-Plus查询所有信息 */
         List<User> userList = userService.list(queryWrapper);
+        /* 脱敏 */
         List<User> list = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
         return ResultUtils.success(list);
     }
 
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteUser(@RequestBody long id, HttpServletRequest request) {
+        /* 删除也要判断用户是不是管理员 */
         if (!isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH);
         }
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        /* 会删除整条用户数据记录（注意这里数据库有‘isDelete字段了，但是没有用到’） */
         boolean b = userService.removeById(id);
         return ResultUtils.success(b);
     }
@@ -153,5 +172,7 @@ public class UserController {
         User user = (User) userObj;
         return user != null && user.getUserRole() == ADMIN_ROLE;
     }
+
+
 
 }

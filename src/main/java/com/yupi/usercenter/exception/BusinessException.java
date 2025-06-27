@@ -1,7 +1,5 @@
 package com.yupi.usercenter.exception;
 
-// [鱼皮的知识星球](https://t.zsxq.com/0emozsIJh) 从 0 到 1 求职指导，斩获 offer！1 对 1 简历优化服务、200+ 真实简历和建议参考、2000+ 求职面试经验分享、25w 字前后端精选面试题
-
 import com.yupi.usercenter.common.ErrorCode;
 
 /**
@@ -17,23 +15,28 @@ public class BusinessException extends RuntimeException {
      */
     private final int code;
 
-    /**
+    /**```
      * 描述
      */
     private final String description;
 
+    /* 下面是几种不同的构造函数 (重载了3个构造函数)*/
+
+    /* 全部自定义 */
     public BusinessException(String message, int code, String description) {
         super(message);
         this.code = code;
         this.description = description;
     }
 
+    /* 选取已经定义好的枚举类(ErrorCode) */
     public BusinessException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.code = errorCode.getCode();
         this.description = errorCode.getDescription();
     }
 
+    /* 只自定义描述 */
     public BusinessException(ErrorCode errorCode, String description) {
         super(errorCode.getMessage());
         this.code = errorCode.getCode();
@@ -44,7 +47,6 @@ public class BusinessException extends RuntimeException {
         return code;
     }
 
-    // https://t.zsxq.com/0emozsIJh
 
     public String getDescription() {
         return description;

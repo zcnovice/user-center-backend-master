@@ -1,6 +1,5 @@
 package com.yupi.usercenter.common;
 
-// 讲师 【coder_鱼_皮】 https://space.bilibili.com/12890453/
 
 /**
  * 错误码
@@ -9,6 +8,7 @@ package com.yupi.usercenter.common;
 
  */
 public enum ErrorCode {
+    /* 注意枚举类定义规范 */
 
     SUCCESS(0, "ok", ""),
     PARAMS_ERROR(40000, "请求参数错误", ""),
@@ -43,7 +43,6 @@ public enum ErrorCode {
         return message;
     }
 
-    // https://t.zsxq.com/0emozsIJh
 
     public String getDescription() {
         return description;

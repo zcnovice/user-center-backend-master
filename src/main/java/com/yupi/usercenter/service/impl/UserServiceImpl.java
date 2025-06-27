@@ -85,6 +85,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 星球编号不能重复
         queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("planetCode", planetCode);
+        /* 查询满足指定条件的数据库记录总数 */
         count = userMapper.selectCount(queryWrapper);
         if (count > 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "编号重复");
@@ -96,10 +97,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
         user.setPlanetCode(planetCode);
+
+        /* 这个是向数据库存数据 */
         boolean saveResult = this.save(user);
         if (!saveResult) {
             return -1;
         }
+        /*  */
         return user.getId();
     }
 
@@ -131,11 +135,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             return null;
         }
         // 2. 加密
+        /* 数据库存储的是加密后的密码，所以要加密后进行对比 */
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
         // 查询用户是否存在
+
+        /* Mybatis-Plus查询条件构造器 */
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        /*  第一个参数 `"userAccount"`：数据库表中的**字段名**
+            第二个参数 `userAccount`：要匹配的**字段值**（变量） */
         queryWrapper.eq("userAccount", userAccount);
         queryWrapper.eq("userPassword", encryptPassword);
+        /* 上面两条相当于查询用户名与密码都匹配的数据 */
+
+        /* selectOne -- 根据条件构造器`queryWrapper`查询唯一一条符合条件的数据 */
         User user = userMapper.selectOne(queryWrapper);
         // 用户不存在
         if (user == null) {
@@ -143,6 +155,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             return null;
         }
         // 3. 用户脱敏
+
+        /* (getSafetyUser)用户信息脱敏 -- 保护用户数据安全性 */
         User safetyUser = getSafetyUser(user);
         // 4. 记录用户的登录态
         request.getSession().setAttribute(USER_LOGIN_STATE, safetyUser);
@@ -166,14 +180,47 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setUserAccount(originUser.getUserAccount());
         safetyUser.setAvatarUrl(originUser.getAvatarUrl());
         safetyUser.setGender(originUser.getGender());
-        safetyUser.setPhone(originUser.getPhone());
-        safetyUser.setEmail(originUser.getEmail());
+        // 对手机号脱敏：13800138000 → 138****8000
+        safetyUser.setPhone(
+                desensitizePhone(originUser.getPhone()));
+
+        // 对邮箱脱敏：test@example.com → te**@example.com
+        safetyUser.setEmail(desensitizeEmail(originUser.getEmail()));
+
+        // 注意：以下字段根据业务需求决定是否返回
         safetyUser.setPlanetCode(originUser.getPlanetCode());
-        safetyUser.setUserRole(originUser.getUserRole());
-        safetyUser.setUserStatus(originUser.getUserStatus());
+
+        // 通常不返回角色和状态给前端
+        // safetyUser.setUserRole(originUser.getUserRole());
+        // safetyUser.setUserStatus(originUser.getUserStatus());
+
         safetyUser.setCreateTime(originUser.getCreateTime());
         return safetyUser;
     }
+
+
+    // 手机号脱敏方法
+    private String desensitizePhone(String phone) {
+        if (StringUtils.isBlank(phone) || phone.length() < 7) {
+            return "****";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(7);
+    }
+
+    // 邮箱脱敏方法
+    private String desensitizeEmail(String email) {
+        if (StringUtils.isBlank(email) || !email.contains("@")) {
+            return "****";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 2) {
+            return "****" + email.substring(atIndex);
+        }
+        return email.substring(0, 2) + "****" + email.substring(atIndex);
+    }
+
+
+
 
     /**
      * 用户注销
@@ -182,11 +229,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      */
     @Override
     public int userLogout(HttpServletRequest request) {
-        // 移除登录态
+        // 移除登录态（移除对应的Session）
         request.getSession().removeAttribute(USER_LOGIN_STATE);
         return 1;
     }
 
 }
 
-// [加入我们](https://yupi.icu) 从 0 到 1 项目实战，经验拉满！10+ 原创项目手把手教程、7 日项目提升训练营、1000+ 项目经验笔记、60+ 编程经验分享直播

@@ -20,7 +20,6 @@ public interface UserConstant {
      */
     int DEFAULT_ROLE = 0;
 
-    // https://space.bilibili.com/12890453/
 
     /**
      * 管理员权限
