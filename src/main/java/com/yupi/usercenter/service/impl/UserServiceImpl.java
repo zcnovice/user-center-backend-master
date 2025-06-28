@@ -1,7 +1,10 @@
 package com.yupi.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.yupi.usercenter.common.ErrorCode;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
@@ -14,8 +17,10 @@ import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.yupi.usercenter.contant.UserConstant.USER_LOGIN_STATE;
 
@@ -195,6 +200,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // safetyUser.setUserStatus(originUser.getUserStatus());
 
         safetyUser.setCreateTime(originUser.getCreateTime());
+        safetyUser.setTags(originUser.getTags());
         return safetyUser;
     }
 
@@ -233,6 +239,112 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         request.getSession().removeAttribute(USER_LOGIN_STATE);
         return 1;
     }
+
+    /**
+     *   根据标签搜索用户。
+     * @param tagNameList  用户要搜索的标签
+     * @return
+     */
+    @Override
+    public List<User> searchUsersByTags(List<String> tagNameList){
+        /* 判断tagNameList是否为空 */
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        /* 创建Mybaits-plus条件构造器 */
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        //拼接tag
+        // like '%Java%' and like '%Python%'
+        /* 遍历每一个标签 */
+        for (String tagList : tagNameList) {
+            /* 给构造器添加模糊查找 */
+            queryWrapper = queryWrapper.like("tags", tagList);
+        }
+        /* 按照构造器查找用户 */
+        List<User> userList = userMapper.selectList(queryWrapper);
+
+
+        /* 对用户信息脱敏然后发送给前端
+        *   List<SafetyUser> resultList = new ArrayList<>();  // 创建新列表存放结果
+            for (User user : userList) {                     // 遍历原始列表
+                SafetyUser safetyUser = getSafetyUser(user);  // 对每个元素应用转换方法
+                resultList.add(safetyUser);                  // 将结果添加到新列表
+            }
+            return resultList;                               // 返回处理后的列表 */
+
+        return  userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
+    }
+
+
+
+    /**
+     * @Description: 自己编写的搜索代码
+     * @return:
+     * @Author:  zcnovice
+     * @date:  2025/6/27 上午11:38
+     */
+//    public List<User> searchUsersByTags_t(List<String> tagNameList){
+//        /* 判断tagNameList是否为空 */
+//        if(CollectionUtils.isEmpty(tagNameList))
+//        {
+//            throw new BusinessException(ErrorCode.PARAMS_ERROR,"无相同标签的用户");
+//        }
+//        /* 创建Mybaits-plus条件构造器 */
+//        QueryWrapper<User> wrapper = new QueryWrapper<>();
+//
+//        /* 遍历每一个标签 */
+//        for(String tag : tagNameList)
+//        {
+//            wrapper = wrapper.like("tag", tag);
+//        }
+//        /* 按照构造器查找用户 */
+//        List<User> users = userMapper.selectList(wrapper);
+//        /* 对用户信息脱敏然后发送给前端 */
+//        List<User> users2 = new ArrayList<>();
+//        for(User user_t : users2)
+//        {
+//            /* 循环脱敏 */
+//            User safetyUser = getSafetyUser(user_t);
+//            users.add(safetyUser);
+//        }
+//        return users;
+//    }
+
+
+    /**
+     *   根据标签搜索用户。(内存过滤版)
+     * @param tagNameList  用户要搜索的标签
+     * @return
+     */
+    @Override
+    public List<User> searchUsersByTags2(List<String> tagNameList){
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        //1.先查询所有用户
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        List<User> userList = userMapper.selectList(queryWrapper);
+        Gson gson = new Gson();
+        //2.判断内存中是否包含要求的标签 parallelStream()
+        return userList.stream().filter(user -> {
+            String tagstr = user.getTags();
+//            if (StringUtils.isBlank(tagstr)){
+//                return false;
+//            }
+            Set<String> tempTagNameSet =  gson.fromJson(tagstr,new TypeToken<Set<String>>(){}.getType());
+            //java8  Optional 来判断空
+            tempTagNameSet = Optional.ofNullable(tempTagNameSet).orElse(new HashSet<>());
+
+            for (String tagName : tagNameList){
+                if (!tempTagNameSet.contains(tagName)){
+                    return false;
+                }
+            }
+            return true;
+        }).map(this::getSafetyUser).collect(Collectors.toList());
+    }
+
+
 
 }
 

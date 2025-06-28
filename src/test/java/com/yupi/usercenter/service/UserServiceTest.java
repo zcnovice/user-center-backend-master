@@ -3,11 +3,14 @@ package com.yupi.usercenter.service;
 // [编程学习交流圈](https://www.code-nav.cn/) 连接万名编程爱好者，一起优秀！20000+ 小伙伴交流分享、40+ 大厂嘉宾一对一答疑、100+ 各方向编程交流群、4000+ 编程问答参考
 
 import com.yupi.usercenter.model.domain.User;
+import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 用户服务测试
@@ -67,7 +70,7 @@ public class UserServiceTest {
         Assertions.assertTrue(result);
     }
 
-    // https://space.bilibili.com/12890453/
+
 
     /**
      * 测试获取用户
@@ -111,4 +114,32 @@ public class UserServiceTest {
         result = userService.userRegister(userAccount, userPassword, checkPassword, planetCode);
         Assertions.assertEquals(-1, result);
     }
+
+
+    /**
+     * 测试用户tag搜索
+     */
+    @Test
+    void testSearchUsersByTags() {
+        List<String> tagNameList = Arrays.asList("java", "python");
+        List<User> userList = userService.searchUsersByTags(tagNameList);
+        Assert.assertNotNull(userList);
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
