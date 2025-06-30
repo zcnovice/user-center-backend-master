@@ -30,6 +30,7 @@ import static com.yupi.usercenter.contant.UserConstant.USER_LOGIN_STATE;
  */
 @RestController
 @RequestMapping("/user")
+
 public class UserController {
 
     @Resource
@@ -144,6 +145,27 @@ public class UserController {
         List<User> list = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
         return ResultUtils.success(list);
     }
+
+    /**
+     * @Description: 查询标签
+     * @return:
+     * @Author:  zcnovice
+     * @date:  2025/6/30 下午12:06
+     */
+    /* required = false  --  表示这个参数是可选的 */
+    /* List<String> tagNameList 是由 Spring 自动解析的，属于 隐式反序列化 */
+    @GetMapping("/search/tags")
+    public BaseResponse<List<User>> searchUsersTags(@RequestParam(required = false) List<String> tagNameList) {
+        /* 判断传过来的标签列表是否为空 */
+        if (CollectionUtils.isEmpty(tagNameList)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        /* 根据标签查询用户 */
+        List<User> userList = userService.searchUsersByTags(tagNameList);
+        return ResultUtils.success(userList);
+    }
+
+
 
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteUser(@RequestBody long id, HttpServletRequest request) {
