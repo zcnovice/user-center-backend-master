@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.yupi.usercenter.common.ErrorCode;
+import com.yupi.usercenter.contant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
 import com.yupi.usercenter.service.UserService;
@@ -17,18 +18,19 @@ import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.yupi.usercenter.contant.UserConstant.ADMIN_ROLE;
 import static com.yupi.usercenter.contant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * 用户服务实现类
  *
  * @author <a href="https://github.com/zcnovice"> zcnovice</a>
-
  */
 @Service
 @Slf4j
@@ -164,7 +166,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         /* (getSafetyUser)用户信息脱敏 -- 保护用户数据安全性 */
         User safetyUser = getSafetyUser(user);
         // 4. 记录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, safetyUser);
+//        request.getSession().setAttribute(USER_LOGIN_STATE, safetyUser);
+        HttpSession session = request.getSession();
+        session.setAttribute(USER_LOGIN_STATE, safetyUser);
+        session.getId();
+        System.out.println("sessionId:" + session.getId());
         return safetyUser;
     }
 
@@ -226,8 +232,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
 
-
-
     /**
      * 用户注销
      *
@@ -241,14 +245,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     /**
-     *   根据标签搜索用户。
-     * @param tagNameList  用户要搜索的标签
+     * 根据标签搜索用户。
+     *
+     * @param tagNameList 用户要搜索的标签
      * @return
      */
     @Override
-    public List<User> searchUsersByTags(List<String> tagNameList){
+    public List<User> searchUsersByTags(List<String> tagNameList) {
         /* 判断tagNameList是否为空 */
-        if (CollectionUtils.isEmpty(tagNameList)){
+        if (CollectionUtils.isEmpty(tagNameList)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         /* 创建Mybaits-plus条件构造器 */
@@ -272,16 +277,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             }
             return resultList;                               // 返回处理后的列表 */
 
-        return  userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
+        return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
     }
-
 
 
     /**
      * @Description: 自己编写的搜索代码
      * @return:
-     * @Author:  zcnovice
-     * @date:  2025/6/27 上午11:38
+     * @Author: zcnovice
+     * @date: 2025/6/27 上午11:38
      */
 //    public List<User> searchUsersByTags_t(List<String> tagNameList){
 //        /* 判断tagNameList是否为空 */
@@ -312,13 +316,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
 
     /**
-     *   根据标签搜索用户。(内存过滤版)
-     * @param tagNameList  用户要搜索的标签
+     * 根据标签搜索用户。(内存过滤版)
+     *
+     * @param tagNameList 用户要搜索的标签
      * @return
      */
     @Override
-    public List<User> searchUsersByTags2(List<String> tagNameList){
-        if (CollectionUtils.isEmpty(tagNameList)){
+    public List<User> searchUsersByTags2(List<String> tagNameList) {
+        if (CollectionUtils.isEmpty(tagNameList)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         //1.先查询所有用户
@@ -331,12 +336,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 //            if (StringUtils.isBlank(tagstr)){
 //                return false;
 //            }
-            Set<String> tempTagNameSet =  gson.fromJson(tagstr,new TypeToken<Set<String>>(){}.getType());
+            Set<String> tempTagNameSet = gson.fromJson(tagstr, new TypeToken<Set<String>>() {
+            }.getType());
             //java8  Optional 来判断空
             tempTagNameSet = Optional.ofNullable(tempTagNameSet).orElse(new HashSet<>());
 
-            for (String tagName : tagNameList){
-                if (!tempTagNameSet.contains(tagName)){
+            for (String tagName : tagNameList) {
+                if (!tempTagNameSet.contains(tagName)) {
                     return false;
                 }
             }
@@ -344,6 +350,74 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }).map(this::getSafetyUser).collect(Collectors.toList());
     }
 
+    /**
+     * 用户信息修改
+     * @param user 当前要更新的用户信息
+     * @param loginUser 当前登录的用户信息
+     * @return
+     */
+    @Override
+    public int updateUser(User user, User loginUser) {
+
+        /* 判断当前待更新的用户ID是否存在 */
+        long userId = user.getId();
+        if (userId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 如果是管理员，允许更新任意信息
+        // 如果不是管理员，只允许更新自己的信息
+        /* 判断是不是管理员            判断要修改的是不是当前用户 */
+        if (!isAdmin(loginUser) && userId != loginUser.getId()) {
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+        /* 根据id查询当前要更新的用户是否存在 */
+        User userOld = userMapper.selectById(userId);
+        if (userOld == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+        /* 存在，并且权限满足    根据ID修改用户  然后返回受影响的行数 */
+        return userMapper.updateById(user);
+    }
+
+    /**
+     * 获取当前用户信息
+     * @param request
+     * @return
+     */
+    @Override
+    public User getLoginInUser(HttpServletRequest request) {
+        /* 如果传入的 HttpServletRequest 对象 request 为 null，说明无法获取会话信息，直接返回 null。 */
+        if (request == null) {
+            return null;
+        }
+        /* 获取到当前登录的用户信息 */
+        Object userObj = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        if (userObj == null) {
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+        return (User) userObj;
+    }
+
+    /**
+     * 是否为管理员(通过HttpServletRequest)
+     * @param request
+     * @return
+     */
+    public boolean isAdmin(HttpServletRequest request) {
+        // 优先从session中取
+        Object userObj = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        User user = (User) userObj;
+        return user != null && user.getUserRole() == ADMIN_ROLE;
+    }
+
+    /**
+     * 是否为管理员(通过User)
+     * @param loginUser
+     * @return
+     */
+    public boolean isAdmin(User loginUser) {
+        return loginUser != null && loginUser.getUserRole() == ADMIN_ROLE;
+    }
 
 
 }

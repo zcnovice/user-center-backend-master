@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,11 +31,12 @@ import static com.yupi.usercenter.contant.UserConstant.USER_LOGIN_STATE;
  */
 @RestController
 @RequestMapping("/user")
-
+@CrossOrigin
 public class UserController {
 
     @Resource
     private UserService userService;
+
 
     /**
      * 用户注册
@@ -60,6 +62,7 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
+
     /**
      * 用户登录
      *
@@ -81,6 +84,7 @@ public class UserController {
         return ResultUtils.success(user);
     }
 
+
     /**
      * 用户注销
      *
@@ -96,6 +100,7 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
+
     /**
      * 获取当前用户
      *
@@ -106,6 +111,9 @@ public class UserController {
     public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
         /* 获取对应session的用户 */
         Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        HttpSession session = request.getSession();
+        session.getId();
+        System.out.println("sessionId:" + session.getId());
         User currentUser = (User) userObj;
         if (currentUser == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN);
@@ -146,6 +154,7 @@ public class UserController {
         return ResultUtils.success(list);
     }
 
+
     /**
      * @Description: 查询标签
      * @return:
@@ -180,6 +189,26 @@ public class UserController {
         boolean b = userService.removeById(id);
         return ResultUtils.success(b);
     }
+
+
+    /**
+     * 用户信息修改
+     * @param user 当前要更新的用户信息
+     * @return
+     */
+    @PostMapping("/update")
+    public BaseResponse<Integer> updateUser(@RequestBody User user, HttpServletRequest request) {
+        /* 判断用户是不是管理员 */
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+        // 鉴权
+        /* 获取当前登录的用户信息（loginUser -- 就是当前登录的用户） */
+        User loginUser = userService.getLoginInUser(request);
+        int result = userService.updateUser(user, loginUser);
+        return ResultUtils.success(result);
+    }
+
 
 
     /**
